@@ -296,7 +296,7 @@ PHP.array_merge = function() {
   }
   return retObj
 }
-PHP.in_array = function(){
+PHP.in_array = function(needle, haystack, argStrict){
   var key = ''
   var strict = !!argStrict
   if (strict) {
