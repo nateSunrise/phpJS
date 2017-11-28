@@ -1,5 +1,11 @@
 // PHP JS LIBRARY
 
+/*
+    Some of these functions are from http://locutus.io/php/
+    Some from around web
+    Some https://github.com/n8davis/ wrote
+    Enjoy!
+*/
 function PHP(){}
 PHP.map      = function(array,multiple){
 	if(typeof multiple === 'undefined') return false;
@@ -13,6 +19,10 @@ PHP.map      = function(array,multiple){
 PHP.is_bool  = function(bool){
 	return (bool === true || bool === false);
 }
+PHP.is_int = function(int){
+	return int === +int && isFinite(int) && !(int % 1)
+}
+
 PHP.is_json   = function(str) {
     try {
         JSON.parse(str);
@@ -21,8 +31,178 @@ PHP.is_json   = function(str) {
     }
     return true;
 }
-
-
+PHP.last_error_json = function(errno){
+ var $global = (typeof window !== 'undefined' ? window : global)
+  return typeof errno !== 'undefined' ? errno : 0
+}
+PHP.json_decode = function(strJson) {
+  var $global      = (typeof window !== 'undefined' ? window : global)
+  var json         = $global.JSON
+  if (typeof json === 'object' && typeof json.parse === 'function') {
+    try {
+      return json.parse(strJson)
+    } catch (err) {
+      if (!(err instanceof SyntaxError)) {
+        throw new Error('Unexpected error type in json_decode()')
+      }
+      PHP.last_error_json(4);
+      return null
+    }
+  }
+  var chars = [
+    '\u0000',
+    '\u00ad',
+    '\u0600-\u0604',
+    '\u070f',
+    '\u17b4',
+    '\u17b5',
+    '\u200c-\u200f',
+    '\u2028-\u202f',
+    '\u2060-\u206f',
+    '\ufeff',
+    '\ufff0-\uffff'
+  ].join('')
+  var cx = new RegExp('[' + chars + ']', 'g')
+  var j
+  var text = strJson
+  cx.lastIndex = 0
+  if (cx.test(text)) {
+    text = text.replace(cx, function (a) {
+      return '\\u' + ('0000' + a.charCodeAt(0)
+        .toString(16))
+        .slice(-4)
+    })
+  }
+  var m = (/^[\],:{}\s]*$/)
+    .test(text.replace(/\\(?:["\\/bfnrt]|u[0-9a-fA-F]{4})/g, '@')
+    .replace(/"[^"\\\n\r]*"|true|false|null|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?/g, ']')
+    .replace(/(?:^|:|,)(?:\s*\[)+/g, ''))
+  if (m) {
+    j = eval('(' + text + ')')
+    return j
+  }
+  PHP.last_error_json(4);
+  return null
+}
+PHP.json_encode = function(mixedVal) { 
+  var $global = (typeof window !== 'undefined' ? window : global)
+  var json = $global.JSON
+  var retVal
+  try {
+    if (typeof json === 'object' && typeof json.stringify === 'function') {
+      // Errors will not be caught here if our own equivalent to resource
+      retVal = json.stringify(mixedVal)
+      if (retVal === undefined) {
+        throw new SyntaxError('json_encode')
+      }
+      return retVal
+    }
+    var value = mixedVal
+    var quote = function (string) {
+      var escapeChars = [
+        '\u0000-\u001f',
+        '\u007f-\u009f',
+        '\u00ad',
+        '\u0600-\u0604',
+        '\u070f',
+        '\u17b4',
+        '\u17b5',
+        '\u200c-\u200f',
+        '\u2028-\u202f',
+        '\u2060-\u206f',
+        '\ufeff',
+        '\ufff0-\uffff'
+      ].join('')
+      var escapable = new RegExp('[\\"' + escapeChars + ']', 'g')
+      var meta = {
+        // table of character substitutions
+        '\b': '\\b',
+        '\t': '\\t',
+        '\n': '\\n',
+        '\f': '\\f',
+        '\r': '\\r',
+        '"': '\\"',
+        '\\': '\\\\'
+      }
+      escapable.lastIndex = 0
+      return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
+        var c = meta[a]
+        return typeof c === 'string' ? c : '\\u' + ('0000' + a.charCodeAt(0)
+          .toString(16))
+          .slice(-4)
+      }) + '"' : '"' + string + '"'
+    }
+    var _str = function (key, holder) {
+      var gap = ''
+      var indent = '    '
+      // The loop counter.
+      var i = 0
+      // The member key.
+      var k = ''
+      var v = ''
+      var length = 0
+      var mind = gap
+      var partial = []
+      var value = holder[key]
+      if (value && typeof value === 'object' && typeof value.toJSON === 'function') {
+        value = value.toJSON(key)
+      }
+      switch (typeof value) {
+        case 'string':
+          return quote(value)
+        case 'number':
+          return isFinite(value) ? String(value) : 'null'
+        case 'boolean':
+        case 'null':
+          return String(value)
+        case 'object':
+          if (!value) {
+            return 'null'
+          }
+          gap += indent
+          partial = []
+          if (Object.prototype.toString.apply(value) === '[object Array]') {
+            length = value.length
+            for (i = 0; i < length; i += 1) {
+              partial[i] = _str(i, value) || 'null'
+            }
+            v = partial.length === 0 ? '[]' : gap
+              ? '[\n' + gap + partial.join(',\n' + gap) + '\n' + mind + ']'
+              : '[' + partial.join(',') + ']'
+            gap = mind
+            return v
+          }
+          for (k in value) {
+            if (Object.hasOwnProperty.call(value, k)) {
+              v = _str(k, value)
+              if (v) {
+                partial.push(quote(k) + (gap ? ': ' : ':') + v)
+              }
+            }
+          }
+          v = partial.length === 0 ? '{}' : gap
+            ? '{\n' + gap + partial.join(',\n' + gap) + '\n' + mind + '}'
+            : '{' + partial.join(',') + '}'
+          gap = mind
+          return v
+        case 'undefined':
+        case 'function':
+        default:
+          throw new SyntaxError('json_encode')
+      }
+    }
+    return _str('', {
+      '': value
+    })
+  } catch (err) {
+    if (!(err instanceof SyntaxError)) {
+      throw new Error('Unexpected error type in json_encode()')
+    }
+    // usable by json_last_error()
+    PHP.last_error_json(4)
+    return null
+  }
+}
 PHP.explode  = function(delimiter, string, limit) {
   if (arguments.length < 2 ||
     typeof delimiter === 'undefined' ||
@@ -93,6 +273,49 @@ PHP.implode  = function(){
     return retVal
   }
   return pieces
+}
+PHP.str_replace = function(search, replace, subject, countObj) {
+  var i = 0
+  var j = 0
+  var temp = ''
+  var repl = ''
+  var sl = 0
+  var fl = 0
+  var f = [].concat(search)
+  var r = [].concat(replace)
+  var s = subject
+  var ra = Object.prototype.toString.call(r) === '[object Array]'
+  var sa = Object.prototype.toString.call(s) === '[object Array]'
+  s = [].concat(s)
+  var $global = (typeof window !== 'undefined' ? window : global)
+
+  if (typeof (search) === 'object' && typeof (replace) === 'string') {
+    temp = replace
+    replace = []
+    for (i = 0; i < search.length; i += 1) {
+      replace[i] = temp
+    }
+    temp = ''
+    r = [].concat(replace)
+    ra = Object.prototype.toString.call(r) === '[object Array]'
+  }
+  if (typeof countObj !== 'undefined') {
+    countObj.value = 0
+  }
+  for (i = 0, sl = s.length; i < sl; i++) {
+    if (s[i] === '') {
+      continue
+    }
+    for (j = 0, fl = f.length; j < fl; j++) {
+      temp = s[i] + ''
+      repl = ra ? (r[j] !== undefined ? r[j] : '') : r[0]
+      s[i] = (temp).split(f[j]).join(repl)
+      if (typeof countObj !== 'undefined') {
+        countObj.value += ((temp.split(f[j])).length - 1)
+      }
+    }
+  }
+  return sa ? s : s[0]
 }
 PHP.var_dump = function(){
   var echo = this.echo
@@ -314,7 +537,5 @@ PHP.in_array = function(needle, haystack, argStrict){
   }
   return false
 }
-
-
 // END PHP JS LIBRARY
 

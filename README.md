@@ -14,9 +14,9 @@ Clone, download, or copy/paste this repo into your project. Add the script tag t
 
 ```
 var myString = "one,two,three";
-PHP.echo(myString); //one,two,three
-var myArray  = PHP.explode(',',myString); // ["one","two","three"];
-PHP.var_dump(myArray); // array(3) {[0] =>string(3) "one"[1] =>string(3) "two"[2] =>string(5) "three"}
+PHP.echo(myString); // OUTPUT: one,two,three
+var myArray  = PHP.explode(',',myString); // OUTPUT: ["one","two","three"];
+PHP.var_dump(myArray); // OUTPUT: array(3) {[0] =>string(3) "one"[1] =>string(3) "two"[2] =>string(5) "three"}
 ```
 
 
