@@ -15,14 +15,80 @@ PHP.map      = function(array,multiple){
 	}
 	return array;
 }
-
+PHP.empty = function(mixedVar){
+  var undef
+  var key
+  var i
+  var len
+  var emptyValues = [undef, null, false, 0, '', '0']
+  for (i = 0, len = emptyValues.length; i < len; i++) {
+    if (mixedVar === emptyValues[i]) {
+      return true
+    }
+  }
+  if (typeof mixedVar === 'object') {
+    for (key in mixedVar) {
+      if (mixedVar.hasOwnProperty(key)) {
+        return false
+      }
+    }
+    return true
+  }
+  return false
+}
 PHP.is_bool  = function(bool){
 	return (bool === true || bool === false);
 }
 PHP.is_int = function(int){
 	return int === +int && isFinite(int) && !(int % 1)
 }
-
+PHP.gettype = function(mixedVar) {
+  var isFloat = require('../var/is_float')
+  var s = typeof mixedVar
+  var name
+  var _getFuncName = function (fn) {
+    var name = (/\W*function\s+([\w$]+)\s*\(/).exec(fn)
+    if (!name) {
+      return '(Anonymous)'
+    }
+    return name[1]
+  }
+  if (s === 'object') {
+    if (mixedVar !== null) {
+      if (typeof mixedVar.length === 'number' &&
+        !(mixedVar.propertyIsEnumerable('length')) &&
+        typeof mixedVar.splice === 'function') {
+        s = 'array'
+      } else if (mixedVar.constructor && _getFuncName(mixedVar.constructor)) {
+        name = _getFuncName(mixedVar.constructor)
+        if (name === 'Date') {
+          s = 'date'
+        } else if (name === 'RegExp') {
+          s = 'regexp'
+        } else if (name === 'LOCUTUS_Resource') {
+          s = 'resource'
+        }
+      }
+    } else {
+      s = 'null'
+    }
+  } else if (s === 'number') {
+    s = isFloat(mixedVar) ? 'double' : 'integer'
+  }
+  return s
+}
+PHP.ucwords = function(str) {
+  return (str + '')
+    .replace(/^(.)|\s+(.)/g, function ($1) {
+      return $1.toUpperCase()
+    })
+}
+PHP.ucfirst = function(str) {
+  str += ''
+  var f = str.charAt(0)
+    .toUpperCase()
+  return f + str.substr(1)
+}
 PHP.is_json   = function(str) {
     try {
         JSON.parse(str);
@@ -30,6 +96,130 @@ PHP.is_json   = function(str) {
         return false;
     }
     return true;
+}
+PHP.array_key_exists = function(key, search) { 
+  if (!search || (search.constructor !== Array && search.constructor !== Object)) {
+    return false
+  }
+  return key in search
+}
+PHP.object_key_exists = function(key,obj){
+  for(var k in obj){
+    if(k === key){
+      return obj[key];
+    }
+  }
+  return false;
+}
+PHP.htmlspecialchars_decode = function(string, quoteStyle) { 
+  var optTemp = 0
+  var i = 0
+  var noquotes = false
+  if (typeof quoteStyle === 'undefined') {
+    quoteStyle = 2
+  }
+  string = string.toString()
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+  var OPTS = {
+    'ENT_NOQUOTES': 0,
+    'ENT_HTML_QUOTE_SINGLE': 1,
+    'ENT_HTML_QUOTE_DOUBLE': 2,
+    'ENT_COMPAT': 2,
+    'ENT_QUOTES': 3,
+    'ENT_IGNORE': 4
+  }
+  if (quoteStyle === 0) {
+    noquotes = true
+  }
+  if (typeof quoteStyle !== 'number') {
+    quoteStyle = [].concat(quoteStyle)
+    for (i = 0; i < quoteStyle.length; i++) {
+      if (OPTS[quoteStyle[i]] === 0) {
+        noquotes = true
+      } else if (OPTS[quoteStyle[i]]) {
+        optTemp = optTemp | OPTS[quoteStyle[i]]
+      }
+    }
+    quoteStyle = optTemp
+  }
+  if (quoteStyle & OPTS.ENT_HTML_QUOTE_SINGLE) {
+    string = string.replace(/&#0*39;/g, "'")
+  }
+  if (!noquotes) {
+    string = string.replace(/&quot;/g, '"')
+  }
+  string = string.replace(/&amp;/g, '&')
+  return string
+}
+PHP.htmlentities = function(string, quoteStyle, charset, doubleEncode) {
+  var getHtmlTranslationTable = require('../strings/get_html_translation_table')
+  var hashMap = getHtmlTranslationTable('HTML_ENTITIES', quoteStyle)
+  string = string === null ? '' : string + ''
+  if (!hashMap) {
+    return false
+  }
+  if (quoteStyle && quoteStyle === 'ENT_QUOTES') {
+    hashMap["'"] = '&#039;'
+  }
+  doubleEncode = doubleEncode === null || !!doubleEncode
+  var regex = new RegExp('&(?:#\\d+|#x[\\da-f]+|[a-zA-Z][\\da-z]*);|[' +
+    Object.keys(hashMap)
+    .join('')
+    .replace(/([()[\]{}\-.*+?^$|/\\])/g, '\\$1') + ']',
+    'g')
+  return string.replace(regex, function (ent) {
+    if (ent.length > 1) {
+      return doubleEncode ? hashMap['&'] + ent.substr(1) : ent
+    }
+    return hashMap[ent]
+  })
+}
+PHP.htmlspecialchars = function(string, quoteStyle, charset, doubleEncode) {
+  var optTemp = 0
+  var i = 0
+  var noquotes = false
+  if (typeof quoteStyle === 'undefined' || quoteStyle === null) {
+    quoteStyle = 2
+  }
+  string = string || ''
+  string = string.toString()
+  if (doubleEncode !== false) {
+    // Put this first to avoid double-encoding
+    string = string.replace(/&/g, '&amp;')
+  }
+  string = string
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  var OPTS = {
+    'ENT_NOQUOTES': 0,
+    'ENT_HTML_QUOTE_SINGLE': 1,
+    'ENT_HTML_QUOTE_DOUBLE': 2,
+    'ENT_COMPAT': 2,
+    'ENT_QUOTES': 3,
+    'ENT_IGNORE': 4
+  }
+  if (quoteStyle === 0) {
+    noquotes = true
+  }
+  if (typeof quoteStyle !== 'number') {
+    quoteStyle = [].concat(quoteStyle)
+    for (i = 0; i < quoteStyle.length; i++) {
+      if (OPTS[quoteStyle[i]] === 0) {
+        noquotes = true
+      } else if (OPTS[quoteStyle[i]]) {
+        optTemp = optTemp | OPTS[quoteStyle[i]]
+      }
+    }
+    quoteStyle = optTemp
+  }
+  if (quoteStyle & OPTS.ENT_HTML_QUOTE_SINGLE) {
+    string = string.replace(/'/g, '&#039;')
+  }
+  if (!noquotes) {
+    string = string.replace(/"/g, '&quot;')
+  }
+  return string
 }
 PHP.last_error_json = function(errno){
  var $global = (typeof window !== 'undefined' ? window : global)
@@ -317,6 +507,61 @@ PHP.str_replace = function(search, replace, subject, countObj) {
   }
   return sa ? s : s[0]
 }
+PHP.strtolower = function(str) {
+  return (str + '')
+    .toLowerCase()
+}
+PHP.strtoupper = function(str) {
+  return (str + '')
+    .toUpperCase()
+}
+PHP.trim = function(str, charlist) {
+  var whitespace = [
+    ' ',
+    '\n',
+    '\r',
+    '\t',
+    '\f',
+    '\x0b',
+    '\xa0',
+    '\u2000',
+    '\u2001',
+    '\u2002',
+    '\u2003',
+    '\u2004',
+    '\u2005',
+    '\u2006',
+    '\u2007',
+    '\u2008',
+    '\u2009',
+    '\u200a',
+    '\u200b',
+    '\u2028',
+    '\u2029',
+    '\u3000'
+  ].join('')
+  var l = 0
+  var i = 0
+  str += ''
+  if (charlist) {
+    whitespace = (charlist + '').replace(/([[\]().?/*{}+$^:])/g, '$1')
+  }
+  l = str.length
+  for (i = 0; i < l; i++) {
+    if (whitespace.indexOf(str.charAt(i)) === -1) {
+      str = str.substring(i)
+      break
+    }
+  }
+  l = str.length
+  for (i = l - 1; i >= 0; i--) {
+    if (whitespace.indexOf(str.charAt(i)) === -1) {
+      str = str.substring(0, i + 1)
+      break
+    }
+  }
+  return whitespace.indexOf(str.charAt(0)) === -1 ? str : ''
+}
 PHP.var_dump = function(){
   var echo = this.echo
   var output = ''
@@ -536,6 +781,23 @@ PHP.in_array = function(needle, haystack, argStrict){
     }
   }
   return false
+}
+PHP.urlencode = function(str) {
+  str = (str + '')
+  return encodeURIComponent(str)
+    .replace(/!/g, '%21')
+    .replace(/'/g, '%27')
+    .replace(/\(/g, '%28')
+    .replace(/\)/g, '%29')
+    .replace(/\*/g, '%2A')
+    .replace(/%20/g, '+')
+}
+PHP.urldecode = function(str){
+  return decodeURIComponent((str + '')
+    .replace(/%(?![\da-f]{2})/gi, function () {
+      return '%25'
+    })
+    .replace(/\+/g, '%20'))
 }
 // END PHP JS LIBRARY
 
