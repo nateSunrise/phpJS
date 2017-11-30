@@ -1478,5 +1478,6 @@ PHP.print_r = function(array, returnVal) {
   }
   return output
 }
+window.PHP = PHP;
 // END PHP JS LIBRARY
 
