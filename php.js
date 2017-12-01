@@ -53,6 +53,18 @@ PHP.get_url_param = function( name, url ) {
     var results = regex.exec( url );
     return results == null ? null : results[1];
 }
+PHP.once = function(fn, context) { 
+  var result;
+
+  return function() { 
+    if(fn) {
+      result = fn.apply(context || this, arguments);
+      fn = null;
+    }
+
+    return result;
+  };
+}
 PHP.gettype = function(mixedVar) {
   var isFloat = require('../var/is_float')
   var s = typeof mixedVar
@@ -1477,6 +1489,40 @@ PHP.print_r = function(array, returnVal) {
     return true
   }
   return output
+}
+PHP.join = function(glue, pieces) {
+
+  return PHP.implode(glue, pieces)
+}
+PHP.lcfirst = function(str) {
+  str += ''
+  var f = str.charAt(0)
+    .toLowerCase()
+  return f + str.substr(1)
+}
+PHP.rtrim = function(str, charlist){  
+  charlist = !charlist ? ' \\s\u00A0' : (charlist + '')
+    .replace(/([[\]().?/*{}+$^:])/g, '\\$1')
+  var re = new RegExp('[' + charlist + ']+$', 'g')
+  return (str + '').replace(re, '')
+}
+PHP.strip_tags = function(input, allowed) { 
+  allowed = (((allowed || '') + '').toLowerCase().match(/<[a-z][a-z0-9]*>/g) || []).join('')
+  var tags = /<\/?([a-z][a-z0-9]*)\b[^>]*>/gi
+  var commentsAndPhpTags = /<!--[\s\S]*?-->|<\?(?:php)?[\s\S]*?\?>/gi
+  var before = input
+  var after = input
+  // recursively remove tags to ensure that the returned string doesn't contain forbidden tags after previous passes (e.g. '<<bait/>switch/>')
+  while (true) {
+    before = after
+    after = before.replace(commentsAndPhpTags, '').replace(tags, function ($0, $1) {
+      return allowed.indexOf('<' + $1.toLowerCase() + '>') > -1 ? $0 : ''
+    })
+    // return once no more tags are removed
+    if (before === after) {
+      return after
+    }
+  }
 }
 window.PHP = PHP;
 // END PHP JS LIBRARY
